@@ -142,6 +142,43 @@ if uploaded_file:
 
 
         st.dataframe(styled_df, use_container_width=True)
+        # --- Phân tích tài chính cơ bản ---
+        st.subheader("📊 Phân tích tài chính tự động")
+        
+        try:
+            # Lấy các chỉ tiêu cần thiết từ dữ liệu
+            def get_value(keyword):
+                match = df_processed[df_processed['Chỉ tiêu'].str.contains(keyword, case=False, na=False)]
+                if not match.empty:
+                    return float(match['Năm sau (N)'].values[0])
+                return None
+        
+            total_assets = get_value("TỔNG CỘNG TÀI SẢN")
+            total_liabilities = get_value("TỔNG CỘNG NỢ PHẢI TRẢ")
+            total_equity = get_value("VỐN CHỦ SỞ HỮU")
+            current_assets = get_value("A. TÀI SẢN NGẮN HẠN")
+            current_liabilities = get_value("C. NỢ NGẮN HẠN")
+            inventory = get_value("Hàng tồn kho")
+        
+            if all(v is not None for v in [total_assets, total_liabilities, total_equity, current_assets, current_liabilities]):
+                debt_equity_ratio = total_liabilities / total_equity
+                debt_ratio = total_liabilities / total_assets
+                current_ratio = current_assets / current_liabilities
+                quick_ratio = (current_assets - (inventory or 0)) / current_liabilities
+                growth_assets = (total_assets - float(df_processed.loc[df_processed['Chỉ tiêu'].str.contains("TỔNG CỘNG TÀI SẢN"), 'Năm trước (N-1)'].values[0])) / \
+                                 float(df_processed.loc[df_processed['Chỉ tiêu'].str.contains("TỔNG CỘNG TÀI SẢN"), 'Năm trước (N-1)'].values[0]) * 100
+        
+                st.write("**Tỷ lệ nợ / vốn chủ sở hữu:** ", f"{debt_equity_ratio:.2f}")
+                st.write("**Hệ số nợ (Debt Ratio):** ", f"{debt_ratio:.2f}")
+                st.write("**Hệ số thanh toán hiện hành (Current Ratio):** ", f"{current_ratio:.2f}")
+                st.write("**Hệ số thanh toán nhanh (Quick Ratio):** ", f"{quick_ratio:.2f}")
+                st.write("**Tăng trưởng tổng tài sản:** ", f"{growth_assets:.2f}%")
+        
+            else:
+                st.warning("Không đủ dữ liệu để phân tích tài chính.")
+        except Exception as e:
+            st.error(f"Lỗi khi phân tích tài chính: {e}")
+
 
         # ========================== #
         # 📈 3. CHỈ SỐ TÀI CHÍNH
