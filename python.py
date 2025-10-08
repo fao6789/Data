@@ -102,6 +102,10 @@ if uploaded_file:
     try:
         df_raw = pd.read_excel(uploaded_file)
         st.success("✅ File đã được tải lên thành công!")
+        # Chuẩn hóa tên cột để tránh lỗi 'Năm sau (N)'
+        df.columns = df.columns.str.strip()  # loại bỏ khoảng trắng đầu/cuối
+        df.columns = df.columns.str.replace('\u00a0', ' ', regex=True)  # thay ký tự khoảng trắng đặc biệt
+
 
         # Chuẩn hóa cột
         if len(df_raw.columns) >= 3:
@@ -118,6 +122,50 @@ if uploaded_file:
         # 🧾 2. HIỂN THỊ KẾT QUẢ
         # ========================== #
         st.subheader("📊 2. Phân tích Tăng trưởng & Cơ cấu Tài sản")
+        # --- Phân tích tài chính cơ bản ---
+        st.subheader("📊 Phân tích tài chính tự động")
+        
+        try:
+            # Tìm tên cột phù hợp nhất (phòng khi file Excel khác nhau)
+            col_prev = next((c for c in df.columns if "Năm trước" in c), None)
+            col_next = next((c for c in df.columns if "Năm sau" in c), None)
+        
+            if not col_prev or not col_next:
+                st.error("Không tìm thấy cột 'Năm trước' hoặc 'Năm sau' trong file Excel.")
+            else:
+                def get_value(keyword):
+                    match = df[df['Chỉ tiêu'].str.contains(keyword, case=False, na=False)]
+                    if not match.empty:
+                        return float(match[col_next].values[0])
+                    return None
+        
+                total_assets = get_value("TỔNG CỘNG TÀI SẢN")
+                total_liabilities = get_value("TỔNG CỘNG NỢ PHẢI TRẢ")
+                total_equity = get_value("VỐN CHỦ SỞ HỮU")
+                current_assets = get_value("A. TÀI SẢN NGẮN HẠN")
+                current_liabilities = get_value("C. NỢ NGẮN HẠN")
+                inventory = get_value("Hàng tồn kho")
+        
+                if all(v is not None for v in [total_assets, total_liabilities, total_equity, current_assets, current_liabilities]):
+                    debt_equity_ratio = total_liabilities / total_equity
+                    debt_ratio = total_liabilities / total_assets
+                    current_ratio = current_assets / current_liabilities
+                    quick_ratio = (current_assets - (inventory or 0)) / current_liabilities
+        
+                    prev_assets = float(df.loc[df['Chỉ tiêu'].str.contains("TỔNG CỘNG TÀI SẢN"), col_prev].values[0])
+                    growth_assets = (total_assets - prev_assets) / prev_assets * 100
+        
+                    st.write("**Tỷ lệ nợ / vốn chủ sở hữu:** ", f"{debt_equity_ratio:.2f}")
+                    st.write("**Hệ số nợ (Debt Ratio):** ", f"{debt_ratio:.2f}")
+                    st.write("**Hệ số thanh toán hiện hành (Current Ratio):** ", f"{current_ratio:.2f}")
+                    st.write("**Hệ số thanh toán nhanh (Quick Ratio):** ", f"{quick_ratio:.2f}")
+                    st.write("**Tăng trưởng tổng tài sản:** ", f"{growth_assets:.2f}%")
+                else:
+                    st.warning("Không đủ dữ liệu để phân tích tài chính.")
+        except Exception as e:
+            st.error(f"Lỗi khi phân tích tài chính: {e}")
+
+        
 
         # Tạo style với fallback nếu matplotlib chưa cài
         style_format = {
