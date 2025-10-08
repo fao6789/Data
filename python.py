@@ -119,16 +119,27 @@ if uploaded_file:
         # ========================== #
         st.subheader("📊 2. Phân tích Tăng trưởng & Cơ cấu Tài sản")
 
-        styled_df = df_processed.style.format({
-            'Năm trước': '{:,.0f}',
-            'Năm sau': '{:,.0f}',
-            'Tốc độ tăng trưởng (%)': '{:.2f}%',
-            'Tỷ trọng Năm trước (%)': '{:.2f}%',
-            'Tỷ trọng Năm sau (%)': '{:.2f}%'
-        }).background_gradient(
-            subset=['Tốc độ tăng trưởng (%)'],
-            cmap='RdYlGn'
-        )
+        # Tạo style với fallback nếu matplotlib chưa cài
+style_format = {
+    'Năm trước': '{:,.0f}',
+    'Năm sau': '{:,.0f}',
+    'Tốc độ tăng trưởng (%)': '{:.2f}%',
+    'Tỷ trọng Năm trước (%)': '{:.2f}%',
+    'Tỷ trọng Năm sau (%)': '{:.2f}%'
+}
+
+try:
+    import matplotlib  # chỉ để kiểm tra xem matplotlib có sẵn không
+    styled_df = df_processed.style.format(style_format).background_gradient(
+        subset=['Tốc độ tăng trưởng (%)'],
+        cmap='RdYlGn'
+    )
+except Exception:
+    # Nếu không có matplotlib, hiển thị bảng bình thường và cảnh báo nhẹ
+    styled_df = df_processed.style.format(style_format)
+    st.warning("Matplotlib chưa được cài — tạm thời không hiển thị gradient. "
+               "Để bật màu sắc, cài `matplotlib` (pip install matplotlib) hoặc thêm nó vào requirements.txt.")
+
 
         st.dataframe(styled_df, use_container_width=True)
 
